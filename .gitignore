@@ -1,0 +1,14 @@
+.env
+.env.local
+.htaccess
+app/uploads/*
+!app/uploads/.gitkeep
+node_modules/
+*.log
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.idea/
+*.iml

@@ -1,0 +1,54 @@
+# Taller Arley — .htaccess Config
+# Copy to .htaccess and fill env vars
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Bloquear acceso directo a archivos sensibles
+  RewriteRule ^\.env$ - [F,L]
+  RewriteRule ^\.git/ - [F,L]
+  RewriteRule ^database/ - [F,L]
+
+  # Bloquear fotos directas (servir vía script)
+  RewriteRule ^uploads/ - [F,L]
+
+  # Redirigir requests a index.php (si es necesario para router)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  # RewriteRule ^ index.php [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Security headers
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set X-XSS-Protection "1; mode=block"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Comprimir respuestas
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+</IfModule>
+
+# Cache
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType text/javascript "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
+
+# Environment variables (fill these from .env)
+# SetEnv DB_HOST localhost
+# SetEnv DB_PORT 3306
+# SetEnv DB_NAME taller_arley_prod
+# SetEnv DB_USER taller_user
+# SetEnv DB_PASS your_secure_password_here
+# SetEnv TWILIO_ACCOUNT_SID your_twilio_sid
+# SetEnv TWILIO_AUTH_TOKEN your_twilio_token
+# SetEnv TWILIO_WHATSAPP_NUMBER your_twilio_whatsapp_number
