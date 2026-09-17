@@ -54,7 +54,8 @@ define('DB_USER', env_get('DB_USER', ''));
 define('DB_PASS', env_get('DB_PASS', ''));
 
 // ── Application ───────────────────────────────────────────────
-define('APP_NAME', 'Taller Arley');
+define('APP_NAME', 'Taller Tecnología Automotriz Arley');
+define('APP_SHORT_NAME', 'Taller Arley');
 define('APP_TIMEZONE', 'America/Costa_Rica');
 define('APP_URL', env_get('APP_URL', 'https://tallerarley.magasoft.tech'));
 define('ENVIRONMENT', env_get('APP_ENV', 'production'));
