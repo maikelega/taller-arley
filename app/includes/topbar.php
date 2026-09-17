@@ -4,7 +4,9 @@
  */
 ?>
 <div class="topbar">
-    <div class="topbar-brand">🔧 Taller Arley</div>
+    <div class="topbar-brand">
+        <img src="/app/assets/images/logo.jpeg" alt="Centro Automotriz Arley" class="topbar-logo">
+    </div>
     <nav style="display: flex; gap: 16px; font-size: 13px;">
         <a href="/dashboard.php">Dashboard</a>
         <a href="/customers.php">Clientes</a>

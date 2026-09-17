@@ -24,7 +24,8 @@ $activeStatuses = array_filter($statuses, fn($s) => (int) $s['id'] !== 8);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard — Taller Arley</title>
+    <title>Dashboard — Centro Automotriz Arley</title>
+    <link rel="icon" type="image/png" href="app/assets/images/favicon.png">
     <link rel="stylesheet" href="app/assets/css/app.css">
 </head>
 <body>

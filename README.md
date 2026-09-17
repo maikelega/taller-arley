@@ -1,4 +1,4 @@
-# Taller Arley — Sistema de Gestión de Órdenes de Trabajo
+# Centro Automotriz Arley — Sistema de Gestión de Órdenes de Trabajo
 
 MVP de sistema web para taller mecánico (3 mecánicos + 1 admin).
 
@@ -72,6 +72,6 @@ Acceder: `http://localhost:8000`
 
 ## Contacts
 
-- **Admin:** Priscilla (Taller Arley)
+- **Admin:** Priscilla (Centro Automotriz Arley)
 - **Champion:** Manuel (dueño)
 - **Dev:** Claude Code

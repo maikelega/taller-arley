@@ -1,6 +1,6 @@
 <?php
 /**
- * Lógica de órdenes de trabajo (Kanban) — Taller Arley
+ * Lógica de órdenes de trabajo (Kanban) — Centro Automotriz Arley
  */
 
 require_once __DIR__ . '/db.php';

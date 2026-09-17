@@ -1,6 +1,6 @@
 <?php
 /**
- * Authentication functions — Taller Arley
+ * Authentication functions — Centro Automotriz Arley
  */
 
 require_once __DIR__ . '/db.php';
@@ -181,7 +181,7 @@ function validate_password_strength(string $password): ?string
 
 /**
  * Crea un usuario directamente (activo de inmediato).
- * Taller Arley tiene 4 usuarios conocidos — el admin los crea, sin
+ * Centro Automotriz Arley tiene 4 usuarios conocidos — el admin los crea, sin
  * flujo de activación por correo.
  */
 function create_user(array $data): array

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-# start_local.sh — Servidor de desarrollo local Taller Arley
+# start_local.sh — Servidor de desarrollo local Centro Automotriz Arley
 # Uso: ./start_local.sh
 # URL: http://localhost:8082
 # BD:  taller_arley_local (MySQL Homebrew, root/litosiac_local)
@@ -12,7 +12,7 @@ APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 lsof -ti :$PORT | xargs kill -9 2>/dev/null || true
 
 echo "──────────────────────────────────────────"
-echo "  Taller Arley — Servidor local"
+echo "  Centro Automotriz Arley — Servidor local"
 echo "  http://localhost:$PORT"
 echo "  Directorio: $APP_DIR"
 echo "  BD: taller_arley_local"

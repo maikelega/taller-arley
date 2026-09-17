@@ -24,7 +24,8 @@ $statusColors = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($customer['name']) ?> — Taller Arley</title>
+    <title><?= htmlspecialchars($customer['name']) ?> — Centro Automotriz Arley</title>
+    <link rel="icon" type="image/png" href="app/assets/images/favicon.png">
     <link rel="stylesheet" href="app/assets/css/app.css">
 </head>
 <body>

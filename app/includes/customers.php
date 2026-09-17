@@ -1,6 +1,6 @@
 <?php
 /**
- * Listado y detalle de clientes — Taller Arley
+ * Listado y detalle de clientes — Centro Automotriz Arley
  */
 
 require_once __DIR__ . '/db.php';

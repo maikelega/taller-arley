@@ -42,6 +42,7 @@ $csrf = csrf_token();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión — <?= htmlspecialchars(APP_NAME) ?></title>
+    <link rel="icon" type="image/png" href="app/assets/images/favicon.png">
     <link rel="stylesheet" href="app/assets/css/login.css">
 </head>
 <body>
@@ -55,11 +56,9 @@ $csrf = csrf_token();
         <svg class="gear gear-3" viewBox="0 0 100 100" fill="currentColor"><path d="M50 35a15 15 0 100 30 15 15 0 000-30zm44.5 8.5l-7.8-1.6a35 35 0 00-3.4-8.2l4.4-6.7a2 2 0 00-.3-2.6l-6-6a2 2 0 00-2.6-.3l-6.7 4.4a35 35 0 00-8.2-3.4l-1.6-7.8A2 2 0 0060.5 10h-8.5a2 2 0 00-2 1.6l-1.6 7.8a35 35 0 00-8.2 3.4l-6.7-4.4a2 2 0 00-2.6.3l-6 6a2 2 0 00-.3 2.6l4.4 6.7a35 35 0 00-3.4 8.2l-7.8 1.6a2 2 0 00-1.6 2v8.5a2 2 0 001.6 2l7.8 1.6a35 35 0 003.4 8.2l-4.4 6.7a2 2 0 00.3 2.6l6 6a2 2 0 002.6.3l6.7-4.4a35 35 0 008.2 3.4l1.6 7.8a2 2 0 002 1.6h8.5a2 2 0 002-1.6l1.6-7.8a35 35 0 008.2-3.4l6.7 4.4a2 2 0 002.6-.3l6-6a2 2 0 00.3-2.6l-4.4-6.7a35 35 0 003.4-8.2l7.8-1.6a2 2 0 001.6-2V46a2 2 0 00-1.6-2z"/></svg>
 
         <div class="brand-top">
-            <div class="brand-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
-            </div>
+            <img src="app/assets/images/logo.jpeg" alt="Centro Automotriz Arley" class="brand-logo-img">
             <div class="brand-title">
-                Taller Tecnología<br>Automotriz Arley
+                Centro Automotriz Arley
                 <span>Gestión de órdenes de trabajo</span>
             </div>
         </div>
@@ -90,15 +89,13 @@ $csrf = csrf_token();
             </div>
         </div>
 
-        <div class="brand-footer">&copy; <?= date('Y') ?> Taller Tecnología Automotriz Arley — Costa Rica</div>
+        <div class="brand-footer">&copy; <?= date('Y') ?> Centro Automotriz Arley — Costa Rica</div>
     </aside>
 
     <main class="form-panel">
         <div class="mobile-brand">
-            <div class="brand-icon" style="width:48px;height:48px;margin:0 auto 10px;">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
-            </div>
-            <div style="font-size:14px;font-weight:700;color:white;">Taller Tecnología Automotriz Arley</div>
+            <img src="app/assets/images/logo.jpeg" alt="Centro Automotriz Arley" class="mobile-brand-logo-img">
+            <div style="font-size:14px;font-weight:700;color:white;">Centro Automotriz Arley</div>
         </div>
 
         <div class="welcome">

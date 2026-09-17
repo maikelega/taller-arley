@@ -1,6 +1,6 @@
 <?php
 /**
- * Lógica de vehículos — Taller Arley
+ * Lógica de vehículos — Centro Automotriz Arley
  * Vehículo = entidad reutilizable entre visitas (buscable por placa/VIN).
  */
 

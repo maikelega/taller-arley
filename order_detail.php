@@ -62,7 +62,8 @@ $categoryLabels = ['mechanic' => 'Mecánica', 'electric' => 'Eléctrica'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($order['plate']) ?> — Taller Arley</title>
+    <title><?= htmlspecialchars($order['plate']) ?> — Centro Automotriz Arley</title>
+    <link rel="icon" type="image/png" href="app/assets/images/favicon.png">
     <link rel="stylesheet" href="app/assets/css/app.css">
 </head>
 <body>

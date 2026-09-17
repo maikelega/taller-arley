@@ -1,6 +1,6 @@
 <?php
 /**
- * Sistema de permisos por rol — Taller Arley
+ * Sistema de permisos por rol — Centro Automotriz Arley
  *
  * Uso:
  *   require_once __DIR__ . '/permissions.php';
