@@ -1,9 +1,23 @@
 <?php
 require_once __DIR__ . '/app/includes/auth.php';
 require_once __DIR__ . '/app/includes/permissions.php';
+require_once __DIR__ . '/app/includes/orders.php';
 require_login();
+require_permission(PERM_ORDERS_VIEW);
 
 $user = current_user();
+$statuses = get_order_statuses();
+$ordersByStatus = get_kanban_orders();
+
+$totalActive = 0;
+foreach ($ordersByStatus as $sid => $orders) {
+    if ((int) $sid !== 8) {
+        $totalActive += count($orders);
+    }
+}
+
+// "Cerrado" (id=8) no se muestra en el tablero diario — solo estados activos
+$activeStatuses = array_filter($statuses, fn($s) => (int) $s['id'] !== 8);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -11,21 +25,54 @@ $user = current_user();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard — Taller Arley</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; }
-        .card { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 12px; padding: 1.5rem; max-width: 500px; }
-        h1 { color: white; margin-bottom: 0.5rem; }
-        .role { display: inline-block; background: #3b82f6; color: white; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 1rem; }
-        a { color: #60a5fa; }
-    </style>
+    <link rel="stylesheet" href="app/assets/css/app.css">
 </head>
 <body>
-    <div class="card">
-        <h1>Bienvenido, <?= htmlspecialchars($user['name']) ?></h1>
-        <span class="role"><?= htmlspecialchars($user['role']) ?></span>
-        <p>Login funcionando correctamente ✓</p>
-        <p style="margin-top: 1rem;"><a href="logout.php">Cerrar sesión</a></p>
+
+<?php include __DIR__ . '/app/includes/topbar.php'; ?>
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <h1>Dashboard</h1>
+            <p><?= $totalActive ?> órdenes activas</p>
+        </div>
+        <?php if (can(PERM_ORDERS_CREATE)): ?>
+            <a href="order_new.php" class="btn btn-primary">+ Nueva orden</a>
+        <?php endif; ?>
     </div>
+
+    <div class="kanban">
+        <?php foreach ($activeStatuses as $status): ?>
+            <?php $orders = $ordersByStatus[(int) $status['id']] ?? []; ?>
+            <div class="kanban-col">
+                <div class="kanban-col-header">
+                    <span class="kanban-col-title"><?= htmlspecialchars($status['name']) ?></span>
+                    <span class="kanban-col-count"><?= count($orders) ?></span>
+                </div>
+
+                <?php if (empty($orders)): ?>
+                    <div class="empty-col">Sin órdenes</div>
+                <?php endif; ?>
+
+                <?php foreach ($orders as $order): ?>
+                    <a href="order_detail.php?id=<?= (int) $order['id'] ?>" class="order-card" style="display: block;">
+                        <div class="order-card-plate"><?= htmlspecialchars($order['plate']) ?></div>
+                        <?php if ($order['vehicle_brand'] || $order['vehicle_model']): ?>
+                            <div class="order-card-vehicle">
+                                <?= htmlspecialchars(trim($order['vehicle_brand'] . ' ' . $order['vehicle_model'])) ?>
+                            </div>
+                        <?php endif; ?>
+                        <div class="order-card-customer"><?= htmlspecialchars($order['customer_name']) ?></div>
+                        <?php if ($order['mechanic_name']): ?>
+                            <div class="order-card-mechanic"><?= htmlspecialchars($order['mechanic_name']) ?></div>
+                        <?php endif; ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
 </body>
 </html>
