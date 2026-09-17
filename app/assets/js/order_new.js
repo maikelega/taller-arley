@@ -153,7 +153,15 @@ document.getElementById('decode_vin_btn').addEventListener('click', async () => 
 
         if (!data.ok) {
             status.textContent = data.error || 'No se pudo decodificar el VIN.';
-            status.style.color = '#fca5a5';
+            if (data.warning) {
+                // Limitación esperada (fabricante fuera de la cobertura de NHTSA),
+                // no un fallo del sistema — color ámbar y foco en marca para
+                // que el usuario siga llenando a mano sin fricción.
+                status.style.color = '#fcd34d';
+                document.getElementById('vehicle_brand').focus();
+            } else {
+                status.style.color = '#fca5a5';
+            }
             return;
         }
 

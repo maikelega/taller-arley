@@ -165,9 +165,23 @@ function decode_vin_nhtsa(string $vin): array
     // ErrorCode "0" = decodificado correctamente
     if (($result['ErrorCode'] ?? '') !== '0' && ($result['ErrorText'] ?? '') !== '') {
         // No es fatal — algunos VINs decodifican parcialmente. Continuamos
-        // pero avisamos si no hay marca (señal de VIN inválido).
+        // pero avisamos si no hay marca (señal de que NHTSA no pudo decodificar).
         if (empty($result['Make'])) {
-            return ['ok' => false, 'error' => 'VIN no reconocido: ' . ($result['ErrorText'] ?? 'verifique el número.')];
+            $errorText = $result['ErrorText'] ?? '';
+
+            // NHTSA solo cubre vehículos vendidos/importados en EE.UU. — común
+            // que falle con autos importados directo de Japón/Europa/Asia sin
+            // pasar por EE.UU. (frecuente en Costa Rica). No es un error real
+            // del sistema, así que el mensaje no debe sonar a fallo técnico.
+            if (stripos($errorText, 'not registered with NHTSA') !== false) {
+                return [
+                    'ok' => false,
+                    'warning' => true,
+                    'error' => 'Este fabricante no vende en EE.UU., así que no está en la base de datos gratuita que usamos. Completa marca, modelo y año manualmente.',
+                ];
+            }
+
+            return ['ok' => false, 'error' => 'VIN no reconocido — verifica el número o completa los datos manualmente.'];
         }
     }
 
