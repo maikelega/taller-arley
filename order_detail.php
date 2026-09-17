@@ -72,8 +72,13 @@ $categoryLabels = ['mechanic' => 'Mecánica', 'electric' => 'Eléctrica'];
 <div class="page">
     <div class="page-header">
         <div>
-            <h1><?= htmlspecialchars($order['plate']) ?> — <?= htmlspecialchars(trim($order['vehicle_brand'] . ' ' . $order['vehicle_model'])) ?: 'Sin datos de vehículo' ?></h1>
-            <p>Cliente: <?= htmlspecialchars($order['customer_name']) ?> <?= $order['customer_phone'] ? '· ' . htmlspecialchars($order['customer_phone']) : '' ?></p>
+            <h1><?= htmlspecialchars($order['plate'] ?? 'Sin placa') ?> — <?= htmlspecialchars(trim(($order['vehicle_brand'] ?? '') . ' ' . ($order['vehicle_model'] ?? ''))) ?: 'Sin datos de vehículo' ?></h1>
+            <p>Dueño: <?= htmlspecialchars($order['customer_name']) ?> <?= $order['customer_phone'] ? '· ' . htmlspecialchars($order['customer_phone']) : '' ?>
+                <?php if ($order['vin']): ?> · VIN: <?= htmlspecialchars($order['vin']) ?><?php endif; ?>
+            </p>
+            <?php if (!empty($order['dropoff_name'])): ?>
+                <p style="color: #fcd34d;">Entregó: <?= htmlspecialchars($order['dropoff_name']) ?> <?= $order['dropoff_phone'] ? '· ' . htmlspecialchars($order['dropoff_phone']) : '' ?></p>
+            <?php endif; ?>
         </div>
         <a href="dashboard.php" class="btn btn-secondary">← Volver al Kanban</a>
     </div>
