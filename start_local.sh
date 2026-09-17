@@ -7,7 +7,7 @@
 # ─────────────────────────────────────────────────────────────
 
 PORT=8082
-APP_DIR="$(cd "$(dirname "$0")/app" && pwd)"
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 lsof -ti :$PORT | xargs kill -9 2>/dev/null || true
 

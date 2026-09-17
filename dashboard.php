@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/permissions.php';
+require_once __DIR__ . '/app/includes/auth.php';
+require_once __DIR__ . '/app/includes/permissions.php';
 require_login();
 
 $user = current_user();
