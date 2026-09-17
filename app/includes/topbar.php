@@ -5,6 +5,10 @@
 ?>
 <div class="topbar">
     <div class="topbar-brand">🔧 Taller Arley</div>
+    <nav style="display: flex; gap: 16px; font-size: 13px;">
+        <a href="/dashboard.php">Dashboard</a>
+        <a href="/customers.php">Clientes</a>
+    </nav>
     <div class="topbar-user">
         <span><?= htmlspecialchars($user['name']) ?></span>
         <span class="role-badge"><?= htmlspecialchars($user['role']) ?></span>
