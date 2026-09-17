@@ -12,6 +12,7 @@
         <a href="/customers.php">Clientes</a>
     </nav>
     <div class="topbar-user">
+        <a href="/downloads/CentroAutomotrizArley.apk" class="btn btn-secondary" style="padding: 6px 12px;" download>📱 App Android</a>
         <span><?= htmlspecialchars($user['name']) ?></span>
         <span class="role-badge"><?= htmlspecialchars($user['role']) ?></span>
         <a href="/logout.php" class="btn btn-secondary" style="padding: 6px 12px;">Salir</a>
