@@ -170,13 +170,12 @@ document.getElementById('decode_vin_btn').addEventListener('click', async () => 
 });
 
 // ══════════════════════════════════════════════════════════
-// Escáner VIN (cámara) — código de barras (ZXing) + texto (Tesseract)
-// Librerías se cargan solo al abrir el modal, para no pesar la carga inicial.
+// Escáner VIN (cámara) — solo código de barras (ZXing)
+// La librería se carga solo al abrir el modal, para no pesar la carga inicial.
 // ══════════════════════════════════════════════════════════
 
 let zxingReader = null;
 let scannerStream = null;
-let scannerMode = 'barcode';
 
 function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -190,23 +189,37 @@ function loadScript(src) {
 
 document.getElementById('open_scanner_btn').addEventListener('click', openScanner);
 document.getElementById('close_scanner_btn').addEventListener('click', closeScanner);
-document.getElementById('scanner_tab_barcode').addEventListener('click', () => switchScannerMode('barcode'));
-document.getElementById('scanner_tab_text').addEventListener('click', () => switchScannerMode('text'));
-document.getElementById('capture_text_btn').addEventListener('click', captureAndReadText);
 
 async function openScanner() {
     document.getElementById('scanner_backdrop').classList.add('open');
-    document.getElementById('scanner_status').textContent = 'Iniciando cámara...';
+    const status = document.getElementById('scanner_status');
+    status.textContent = 'Iniciando cámara...';
 
     try {
         scannerStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' },
         });
         document.getElementById('scanner_video').srcObject = scannerStream;
-        document.getElementById('scanner_status').textContent = '';
-        await switchScannerMode('barcode');
+
+        status.textContent = 'Cargando lector de código de barras...';
+        if (!window.ZXing) {
+            await loadScript('https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js');
+        }
+        zxingReader = new window.ZXing.BrowserMultiFormatReader();
+        status.textContent = 'Apunta al código de barras del VIN (marco de la puerta).';
+
+        zxingReader.decodeFromVideoElement(document.getElementById('scanner_video'), (result) => {
+            if (result) {
+                const text = result.getText().toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (text.length === 17) {
+                    document.getElementById('vin').value = text;
+                    status.textContent = '✓ VIN leído: ' + text;
+                    setTimeout(closeScanner, 800);
+                }
+            }
+        });
     } catch (e) {
-        document.getElementById('scanner_status').textContent = 'No se pudo acceder a la cámara: ' + e.message;
+        status.textContent = 'No se pudo acceder a la cámara o al lector: ' + e.message;
     }
 }
 
@@ -220,77 +233,4 @@ function closeScanner() {
         scannerStream = null;
     }
     document.getElementById('scanner_backdrop').classList.remove('open');
-}
-
-async function switchScannerMode(mode) {
-    scannerMode = mode;
-    document.getElementById('scanner_tab_barcode').classList.toggle('active', mode === 'barcode');
-    document.getElementById('scanner_tab_text').classList.toggle('active', mode === 'text');
-    document.getElementById('capture_text_btn').style.display = mode === 'text' ? 'block' : 'none';
-
-    if (zxingReader) {
-        zxingReader.reset();
-        zxingReader = null;
-    }
-
-    if (mode === 'barcode') {
-        document.getElementById('scanner_status').textContent = 'Cargando lector de código de barras...';
-        try {
-            if (!window.ZXing) {
-                await loadScript('https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js');
-            }
-            zxingReader = new window.ZXing.BrowserMultiFormatReader();
-            document.getElementById('scanner_status').textContent = 'Apunta al código de barras del VIN (marco de la puerta).';
-
-            zxingReader.decodeFromVideoElement(document.getElementById('scanner_video'), (result, err) => {
-                if (result) {
-                    const text = result.getText().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    if (text.length === 17) {
-                        document.getElementById('vin').value = text;
-                        document.getElementById('scanner_status').textContent = '✓ VIN leído: ' + text;
-                        setTimeout(closeScanner, 800);
-                    }
-                }
-            });
-        } catch (e) {
-            document.getElementById('scanner_status').textContent = 'No se pudo cargar el lector de código de barras.';
-        }
-    } else {
-        document.getElementById('scanner_status').textContent = 'Apunta al VIN impreso o grabado y presiona "Capturar".';
-    }
-}
-
-async function captureAndReadText() {
-    const status = document.getElementById('scanner_status');
-    status.textContent = 'Cargando OCR...';
-
-    try {
-        if (!window.Tesseract) {
-            await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
-        }
-
-        const video = document.getElementById('scanner_video');
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-
-        status.textContent = 'Leyendo texto (puede tardar unos segundos)...';
-
-        const { data } = await window.Tesseract.recognize(canvas, 'eng');
-        const raw = data.text.toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-        // Busca una subcadena de 17 caracteres alfanuméricos (formato VIN válido, sin I/O/Q)
-        const match = raw.match(/[A-HJ-NPR-Z0-9]{17}/);
-
-        if (match) {
-            document.getElementById('vin').value = match[0];
-            status.textContent = '✓ VIN detectado: ' + match[0] + ' (verifica que sea correcto)';
-            setTimeout(closeScanner, 1200);
-        } else {
-            status.textContent = 'No se detectó un VIN válido (17 caracteres). Intenta de nuevo con mejor luz/enfoque.';
-        }
-    } catch (e) {
-        status.textContent = 'Error al leer el texto: ' + e.message;
-    }
 }

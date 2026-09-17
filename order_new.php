@@ -136,18 +136,14 @@ $csrf = csrf_token();
     </div>
 </div>
 
-<!-- ── Modal escáner VIN ─────────────────────────────────── -->
+<!-- ── Modal escáner VIN (código de barras) ─────────────────── -->
 <div class="scanner-modal-backdrop" id="scanner_backdrop">
     <div class="scanner-modal">
-        <h3>Escanear VIN</h3>
-        <div class="scanner-tabs">
-            <div class="scanner-tab active" id="scanner_tab_barcode">Código de barras</div>
-            <div class="scanner-tab" id="scanner_tab_text">Texto (OCR)</div>
-        </div>
+        <h3>Escanear VIN — Código de barras</h3>
+        <p style="color: #94a3b8; font-size: 12px; margin-bottom: 0.75rem;">Apunta al código de barras del marco de la puerta del conductor.</p>
         <video id="scanner_video" autoplay playsinline muted></video>
         <div class="scanner-status" id="scanner_status"></div>
         <div class="scanner-actions">
-            <button type="button" class="btn btn-primary" id="capture_text_btn" style="display:none;">Capturar</button>
             <button type="button" class="btn btn-secondary" id="close_scanner_btn">Cerrar</button>
         </div>
     </div>
