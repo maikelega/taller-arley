@@ -53,6 +53,7 @@ $csrf = csrf_token();
         <form method="POST" action="order_new.php" novalidate id="order-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
             <input type="hidden" name="customer_id" id="customer_id" value="">
+            <input type="hidden" name="vehicle_id" id="vehicle_id" value="">
 
             <div class="form-group autocomplete-wrapper">
                 <label>Cliente <span class="required">*</span></label>
@@ -64,13 +65,18 @@ $csrf = csrf_token();
 
             <div class="form-row">
                 <div class="form-group">
+                    <label>Cédula de identidad</label>
+                    <input type="text" name="customer_cedula" id="customer_cedula" class="form-control" placeholder="1-2345-6789" value="<?= htmlspecialchars($_POST['customer_cedula'] ?? '') ?>">
+                </div>
+                <div class="form-group">
                     <label>Teléfono</label>
                     <input type="tel" name="customer_phone" id="customer_phone" class="form-control" placeholder="8888-8888" value="<?= htmlspecialchars($_POST['customer_phone'] ?? '') ?>">
                 </div>
-                <div class="form-group">
-                    <label>Correo (opcional)</label>
-                    <input type="email" name="customer_email" id="customer_email" class="form-control" placeholder="cliente@correo.com" value="<?= htmlspecialchars($_POST['customer_email'] ?? '') ?>">
-                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Correo (opcional)</label>
+                <input type="email" name="customer_email" id="customer_email" class="form-control" placeholder="cliente@correo.com" value="<?= htmlspecialchars($_POST['customer_email'] ?? '') ?>">
             </div>
 
             <label class="checkbox-row">
@@ -91,24 +97,33 @@ $csrf = csrf_token();
                 </div>
             </div>
 
-            <div class="form-group autocomplete-wrapper">
-                <label>Placa <span class="required">*</span></label>
-                <input type="text" name="plate" id="plate" class="form-control"
-                       placeholder="SJN 1234" autocomplete="off" required
-                       value="<?= htmlspecialchars($_POST['plate'] ?? '') ?>">
-                <div class="autocomplete-dropdown" id="plate_dropdown"></div>
-                <div class="field-hint" id="vehicle_found_hint" style="display:none;">✓ Vehículo encontrado — datos autocompletados</div>
+            <!-- Vehículos ya asociados al cliente elegido — aparece solo si el cliente tiene alguno -->
+            <div class="form-group" id="customer_vehicles_wrapper" style="display:none;">
+                <label>Vehículos de este cliente</label>
+                <div id="customer_vehicles_list"></div>
+                <div class="field-hint">Elige uno, o ingresa los datos abajo para un vehículo nuevo.</div>
             </div>
 
-            <div class="form-group">
-                <label>VIN / Número de chasis</label>
-                <div class="input-with-btn">
-                    <input type="text" name="vin" id="vin" class="form-control" placeholder="17 caracteres" maxlength="17" style="text-transform: uppercase;" value="<?= htmlspecialchars($_POST['vin'] ?? '') ?>">
-                    <button type="button" class="btn-icon" id="open_scanner_btn">📷 Escanear</button>
-                    <button type="button" class="btn-icon" id="decode_vin_btn">🔍 Decodificar</button>
+            <div class="form-row">
+                <div class="form-group autocomplete-wrapper">
+                    <label>Placa</label>
+                    <input type="text" name="plate" id="plate" class="form-control"
+                           placeholder="SJN 1234" autocomplete="off"
+                           value="<?= htmlspecialchars($_POST['plate'] ?? '') ?>">
+                    <div class="autocomplete-dropdown" id="plate_dropdown"></div>
                 </div>
-                <div class="field-hint" id="vin_decode_status"></div>
+                <div class="form-group">
+                    <label>VIN / Número de chasis</label>
+                    <div class="input-with-btn">
+                        <input type="text" name="vin" id="vin" class="form-control" placeholder="17 caracteres" maxlength="17" style="text-transform: uppercase;" value="<?= htmlspecialchars($_POST['vin'] ?? '') ?>">
+                        <button type="button" class="btn-icon" id="open_scanner_btn">📷</button>
+                        <button type="button" class="btn-icon" id="decode_vin_btn">🔍</button>
+                    </div>
+                </div>
             </div>
+            <div class="field-hint" id="plate_vin_hint">Ingresa al menos la placa o el VIN.</div>
+            <div class="field-hint" id="vehicle_found_hint" style="display:none;">✓ Vehículo encontrado — datos autocompletados</div>
+            <div class="field-hint" id="vin_decode_status"></div>
 
             <div class="form-row">
                 <div class="form-group">
@@ -121,9 +136,43 @@ $csrf = csrf_token();
                 </div>
             </div>
 
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Año</label>
+                    <input type="number" name="vehicle_year" id="vehicle_year" class="form-control" placeholder="2020" min="1980" max="2030" value="<?= htmlspecialchars($_POST['vehicle_year'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                    <label>Color</label>
+                    <input type="text" name="color" id="color" class="form-control" placeholder="Blanco" value="<?= htmlspecialchars($_POST['color'] ?? '') ?>">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Motor</label>
+                    <input type="text" name="engine" id="engine" class="form-control" placeholder="4 cil 2.0L" value="<?= htmlspecialchars($_POST['engine'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                    <label>Kilometraje</label>
+                    <input type="number" name="mileage" id="mileage" class="form-control" placeholder="85000" min="0" value="<?= htmlspecialchars($_POST['mileage'] ?? '') ?>">
+                </div>
+            </div>
+
             <div class="form-group">
-                <label>Año</label>
-                <input type="number" name="vehicle_year" id="vehicle_year" class="form-control" placeholder="2020" min="1980" max="2030" style="max-width: 150px;" value="<?= htmlspecialchars($_POST['vehicle_year'] ?? '') ?>">
+                <label>Combustible</label>
+                <select name="fuel_type" id="fuel_type" class="form-control" style="max-width: 220px;">
+                    <option value="">Sin especificar</option>
+                    <option value="Gasoline">Gasolina</option>
+                    <option value="Diesel">Diésel</option>
+                    <option value="Hybrid">Híbrido</option>
+                    <option value="Electric">Eléctrico</option>
+                    <option value="GLP">GLP</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Reparaciones solicitadas</label>
+                <textarea name="requested_repairs" class="form-control" placeholder="Qué pide el cliente que se revise o repare"><?= htmlspecialchars($_POST['requested_repairs'] ?? '') ?></textarea>
             </div>
 
             <div class="form-group">

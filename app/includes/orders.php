@@ -52,7 +52,7 @@ function search_customers(string $query, int $limit = 8): array
     }
     $pdo = Database::getConnection();
     $stmt = $pdo->prepare(
-        'SELECT id, name, phone, email FROM customers
+        'SELECT id, name, cedula, phone, email FROM customers
          WHERE name LIKE :q1 OR phone LIKE :q2
          ORDER BY name LIMIT :lim'
     );
@@ -68,7 +68,7 @@ function search_customers(string $query, int $limit = 8): array
  * Busca un cliente por teléfono (llave natural para taller); si no
  * existe lo crea. Devuelve el customer_id.
  */
-function find_or_create_customer(string $name, string $phone, string $email = ''): int
+function find_or_create_customer(string $name, string $phone, string $email = '', string $cedula = ''): int
 {
     $pdo = Database::getConnection();
 
@@ -81,11 +81,12 @@ function find_or_create_customer(string $name, string $phone, string $email = ''
         }
     }
 
-    $pdo->prepare('INSERT INTO customers (name, phone, email) VALUES (:name, :phone, :email)')
+    $pdo->prepare('INSERT INTO customers (name, cedula, phone, email) VALUES (:name, :cedula, :phone, :email)')
         ->execute([
-            ':name'  => $name,
-            ':phone' => $phone !== '' ? $phone : null,
-            ':email' => $email !== '' ? $email : null,
+            ':name'   => $name,
+            ':cedula' => $cedula !== '' ? $cedula : null,
+            ':phone'  => $phone !== '' ? $phone : null,
+            ':email'  => $email !== '' ? $email : null,
         ]);
 
     return (int) $pdo->lastInsertId();
@@ -95,10 +96,13 @@ function find_or_create_customer(string $name, string $phone, string $email = ''
  * Recepción de vehículo — crea la OT en estado "Recibido" (status_id=1).
  *
  * Cliente: si viene `customer_id` (seleccionado del autocomplete) se
- * reusa; si no, se crea uno nuevo con customer_name/phone/email.
+ * reusa; si no, se crea uno nuevo con customer_name/phone/email/cedula.
  *
- * Vehículo: create_or_update_vehicle ya maneja "existe por placa →
- * actualiza" vs "no existe → crea".
+ * Vehículo: si viene `vehicle_id` (el usuario eligió uno de los
+ * vehículos ya asociados al cliente) se usa directamente. Si no,
+ * create_or_update_vehicle maneja "existe por placa/vin → actualiza"
+ * vs "no existe → crea". Placa NO es obligatoria — se requiere placa
+ * O vin (al menos uno).
  *
  * Contacto de entrega: dropoff_name/dropoff_phone son opcionales,
  * solo se llenan si quien entrega NO es el dueño (no crean un cliente).
@@ -107,55 +111,74 @@ function create_order(array $data): array
 {
     $customerId = (int) ($data['customer_id'] ?? 0);
     $customerName = trim($data['customer_name'] ?? '');
+    $customerCedula = trim($data['customer_cedula'] ?? '');
     $customerPhone = trim($data['customer_phone'] ?? '');
     $customerEmail = trim($data['customer_email'] ?? '');
+    $vehicleId = (int) ($data['vehicle_id'] ?? 0);
     $plate = mb_strtoupper(trim($data['plate'] ?? ''));
+    $vin = mb_strtoupper(trim($data['vin'] ?? ''));
     $notes = trim($data['notes'] ?? '');
+    $requestedRepairs = trim($data['requested_repairs'] ?? '');
     $dropoffName = trim($data['dropoff_name'] ?? '');
     $dropoffPhone = trim($data['dropoff_phone'] ?? '');
 
-    if (($customerId <= 0 && $customerName === '') || $plate === '') {
-        return ['ok' => false, 'error' => 'Complete al menos nombre del cliente y placa.'];
+    if ($customerId <= 0 && $customerName === '') {
+        return ['ok' => false, 'error' => 'El nombre del cliente es obligatorio.'];
     }
-    if (mb_strlen($plate) > 20) {
-        return ['ok' => false, 'error' => 'La placa es demasiado larga.'];
+    if ($vehicleId <= 0 && $plate === '' && $vin === '') {
+        return ['ok' => false, 'error' => 'Ingrese al menos la placa o el VIN del vehículo.'];
     }
 
     try {
         $pdo = Database::getConnection();
 
-        // Solo bloquea si hay una OT activa (no cerrada) con esa placa
-        $stmt = $pdo->prepare(
-            "SELECT o.id FROM orders o
-             INNER JOIN vehicles v ON o.vehicle_id = v.id
-             WHERE v.plate = :plate AND o.status_id != 8 LIMIT 1"
-        );
-        $stmt->execute([':plate' => $plate]);
+        // Solo bloquea si hay una OT activa (no cerrada) para ese mismo
+        // vehículo — se detecta por vehicle_id si ya viene elegido, o por
+        // placa/vin si es un vehículo nuevo/existente sin elegir aún.
+        if ($vehicleId > 0) {
+            $stmt = $pdo->prepare('SELECT id FROM orders WHERE vehicle_id = :vid AND status_id != 8 LIMIT 1');
+            $stmt->execute([':vid' => $vehicleId]);
+        } else {
+            // v.plate = '' / v.vin = '' nunca coincide con NULL en SQL, así que
+            // pasar cadena vacía cuando el campo no viene es seguro (no genera
+            // falsos positivos contra vehículos sin placa/vin registrado).
+            $stmt = $pdo->prepare(
+                "SELECT o.id FROM orders o
+                 INNER JOIN vehicles v ON o.vehicle_id = v.id
+                 WHERE o.status_id != 8 AND (v.plate = :plate OR v.vin = :vin)
+                 LIMIT 1"
+            );
+            $stmt->execute([':plate' => $plate, ':vin' => $vin]);
+        }
         if ($stmt->fetch()) {
-            return ['ok' => false, 'error' => 'Ya existe una orden activa con esa placa.'];
+            return ['ok' => false, 'error' => 'Ya existe una orden activa para ese vehículo.'];
         }
 
         $pdo->beginTransaction();
 
         if ($customerId <= 0) {
-            $customerId = find_or_create_customer($customerName, $customerPhone, $customerEmail);
+            $customerId = find_or_create_customer($customerName, $customerPhone, $customerEmail, $customerCedula);
         }
 
-        $vehicleResult = create_or_update_vehicle(array_merge($data, ['customer_id' => $customerId, 'plate' => $plate]));
-        if (!$vehicleResult['ok']) {
-            $pdo->rollBack();
-            return $vehicleResult;
+        if ($vehicleId <= 0) {
+            $vehicleResult = create_or_update_vehicle(array_merge($data, ['customer_id' => $customerId, 'plate' => $plate, 'vin' => $vin]));
+            if (!$vehicleResult['ok']) {
+                $pdo->rollBack();
+                return $vehicleResult;
+            }
+            $vehicleId = $vehicleResult['vehicle_id'];
         }
 
         $pdo->prepare(
-            'INSERT INTO orders (customer_id, vehicle_id, status_id, notes, dropoff_name, dropoff_phone)
-             VALUES (:cid, :vid, 1, :notes, :dname, :dphone)'
+            'INSERT INTO orders (customer_id, vehicle_id, status_id, notes, requested_repairs, dropoff_name, dropoff_phone)
+             VALUES (:cid, :vid, 1, :notes, :repairs, :dname, :dphone)'
         )->execute([
-            ':cid'    => $customerId,
-            ':vid'    => $vehicleResult['vehicle_id'],
-            ':notes'  => $notes !== '' ? $notes : null,
-            ':dname'  => $dropoffName !== '' ? $dropoffName : null,
-            ':dphone' => $dropoffPhone !== '' ? $dropoffPhone : null,
+            ':cid'     => $customerId,
+            ':vid'     => $vehicleId,
+            ':notes'   => $notes !== '' ? $notes : null,
+            ':repairs' => $requestedRepairs !== '' ? $requestedRepairs : null,
+            ':dname'   => $dropoffName !== '' ? $dropoffName : null,
+            ':dphone'  => $dropoffPhone !== '' ? $dropoffPhone : null,
         ]);
         $orderId = (int) $pdo->lastInsertId();
 
@@ -175,9 +198,9 @@ function get_order_detail(int $orderId): ?array
 {
     $pdo = Database::getConnection();
     $stmt = $pdo->prepare(
-        'SELECT o.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
+        'SELECT o.*, c.name AS customer_name, c.cedula AS customer_cedula, c.phone AS customer_phone, c.email AS customer_email,
                 v.plate, v.vin, v.brand AS vehicle_brand, v.model AS vehicle_model, v.year AS vehicle_year,
-                v.engine, v.fuel_type, v.transmission,
+                v.color, v.mileage, v.engine, v.fuel_type, v.transmission,
                 m.name AS mechanic_name, s.name AS status_name
          FROM orders o
          INNER JOIN customers c ON o.customer_id = c.id

@@ -33,6 +33,22 @@ function find_vehicle_by_vin(string $vin): ?array
 }
 
 /**
+ * Vehículos asociados a un cliente — para que, al elegir un cliente
+ * existente en la recepción, se pueda elegir cuál de sus vehículos
+ * es el que trae hoy (en vez de recapturar todo a mano).
+ */
+function get_customer_vehicles(int $customerId): array
+{
+    $pdo = Database::getConnection();
+    $stmt = $pdo->prepare(
+        'SELECT id, plate, vin, brand, model, year, color, mileage, engine, fuel_type, transmission
+         FROM vehicles WHERE customer_id = :cid ORDER BY plate'
+    );
+    $stmt->execute([':cid' => $customerId]);
+    return $stmt->fetchAll();
+}
+
+/**
  * Búsqueda tipo autocomplete por placa (prefijo). Usada por el
  * endpoint AJAX de order_new.php.
  */
@@ -61,8 +77,12 @@ function search_vehicles(string $query, int $limit = 8): array
 }
 
 /**
- * Crea o actualiza (si ya existe por placa) el vehículo, y lo asocia
- * al cliente indicado como dueño actual.
+ * Crea o actualiza (si ya existe por placa o VIN) el vehículo, y lo
+ * asocia al cliente indicado como dueño actual.
+ *
+ * La placa NO es obligatoria — pero se requiere placa O vin (al menos
+ * uno), ya que ambos son formas válidas de identificar el vehículo
+ * (útil cuando un vehículo aún no tiene placas asignadas, por ejemplo).
  */
 function create_or_update_vehicle(array $data): array
 {
@@ -72,14 +92,19 @@ function create_or_update_vehicle(array $data): array
     $brand = trim($data['vehicle_brand'] ?? '');
     $model = trim($data['vehicle_model'] ?? '');
     $year = (int) ($data['vehicle_year'] ?? 0);
+    $color = trim($data['color'] ?? '');
+    $mileage = (int) ($data['mileage'] ?? 0);
     $engine = trim($data['engine'] ?? '');
     $fuelType = trim($data['fuel_type'] ?? '');
     $transmission = trim($data['transmission'] ?? '');
 
-    if ($plate === '' || $customerId <= 0) {
-        return ['ok' => false, 'error' => 'Placa y cliente son obligatorios.'];
+    if ($customerId <= 0) {
+        return ['ok' => false, 'error' => 'El cliente es obligatorio.'];
     }
-    if (mb_strlen($plate) > 20) {
+    if ($plate === '' && $vin === '') {
+        return ['ok' => false, 'error' => 'Ingrese al menos la placa o el VIN del vehículo.'];
+    }
+    if ($plate !== '' && mb_strlen($plate) > 20) {
         return ['ok' => false, 'error' => 'La placa es demasiado larga.'];
     }
     if ($vin !== '' && mb_strlen($vin) !== 17) {
@@ -88,34 +113,43 @@ function create_or_update_vehicle(array $data): array
 
     try {
         $pdo = Database::getConnection();
-        $existing = find_vehicle_by_plate($plate);
+        $existing = ($plate !== '' ? find_vehicle_by_plate($plate) : null)
+            ?? ($vin !== '' ? find_vehicle_by_vin($vin) : null);
 
         if ($existing) {
             $pdo->prepare(
-                'UPDATE vehicles SET customer_id = :cid, vin = COALESCE(NULLIF(:vin, \'\'), vin),
+                'UPDATE vehicles SET customer_id = :cid,
+                    plate = COALESCE(NULLIF(:plate, \'\'), plate),
+                    vin = COALESCE(NULLIF(:vin, \'\'), vin),
                     brand = COALESCE(NULLIF(:brand, \'\'), brand), model = COALESCE(NULLIF(:model, \'\'), model),
-                    year = COALESCE(NULLIF(:year, 0), year), engine = COALESCE(NULLIF(:engine, \'\'), engine),
+                    year = COALESCE(NULLIF(:year, 0), year),
+                    color = COALESCE(NULLIF(:color, \'\'), color),
+                    mileage = COALESCE(NULLIF(:mileage, 0), mileage),
+                    engine = COALESCE(NULLIF(:engine, \'\'), engine),
                     fuel_type = COALESCE(NULLIF(:fuel, \'\'), fuel_type),
                     transmission = COALESCE(NULLIF(:trans, \'\'), transmission)
                  WHERE id = :id'
             )->execute([
-                ':cid' => $customerId, ':vin' => $vin, ':brand' => $brand, ':model' => $model,
-                ':year' => $year, ':engine' => $engine, ':fuel' => $fuelType, ':trans' => $transmission,
+                ':cid' => $customerId, ':plate' => $plate, ':vin' => $vin, ':brand' => $brand, ':model' => $model,
+                ':year' => $year, ':color' => $color, ':mileage' => $mileage,
+                ':engine' => $engine, ':fuel' => $fuelType, ':trans' => $transmission,
                 ':id' => $existing['id'],
             ]);
             return ['ok' => true, 'vehicle_id' => (int) $existing['id']];
         }
 
         $pdo->prepare(
-            'INSERT INTO vehicles (customer_id, plate, vin, brand, model, year, engine, fuel_type, transmission)
-             VALUES (:cid, :plate, :vin, :brand, :model, :year, :engine, :fuel, :trans)'
+            'INSERT INTO vehicles (customer_id, plate, vin, brand, model, year, color, mileage, engine, fuel_type, transmission)
+             VALUES (:cid, :plate, :vin, :brand, :model, :year, :color, :mileage, :engine, :fuel, :trans)'
         )->execute([
             ':cid'   => $customerId,
-            ':plate' => $plate,
+            ':plate' => $plate !== '' ? $plate : null,
             ':vin'   => $vin !== '' ? $vin : null,
             ':brand' => $brand !== '' ? $brand : null,
             ':model' => $model !== '' ? $model : null,
             ':year'  => $year > 0 ? $year : null,
+            ':color' => $color !== '' ? $color : null,
+            ':mileage' => $mileage > 0 ? $mileage : null,
             ':engine' => $engine !== '' ? $engine : null,
             ':fuel'   => $fuelType !== '' ? $fuelType : null,
             ':trans'  => $transmission !== '' ? $transmission : null,

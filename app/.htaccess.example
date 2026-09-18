@@ -10,8 +10,9 @@
   RewriteRule ^\.git/ - [F,L]
   RewriteRule ^database/ - [F,L]
 
-  # Bloquear fotos directas (servir vía script)
-  RewriteRule ^uploads/ - [F,L]
+  # Bloquear fotos directas (servir vía script) — este .htaccess vive en
+  # la raíz del sitio, y las fotos están en app/uploads/, no uploads/
+  RewriteRule ^app/uploads/ - [F,L]
 
   # Redirigir requests a index.php (si es necesario para router)
   RewriteCond %{REQUEST_FILENAME} !-f

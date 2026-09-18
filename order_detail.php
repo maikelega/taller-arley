@@ -2,6 +2,7 @@
 require_once __DIR__ . '/app/includes/auth.php';
 require_once __DIR__ . '/app/includes/permissions.php';
 require_once __DIR__ . '/app/includes/orders.php';
+require_once __DIR__ . '/app/includes/photos.php';
 require_login();
 require_permission(PERM_ORDERS_VIEW);
 
@@ -52,6 +53,11 @@ if (!$order) {
 
 $statuses = get_order_statuses();
 $mechanics = get_mechanics();
+$photos = get_order_photos($orderId);
+$photosByAngle = [];
+foreach ($photos as $p) {
+    $photosByAngle[$p['angle']][] = $p;
+}
 $csrf = csrf_token();
 
 $severityLabels = ['green' => 'Verde', 'yellow' => 'Amarillo', 'red' => 'Rojo'];
@@ -62,7 +68,7 @@ $categoryLabels = ['mechanic' => 'Mecánica', 'electric' => 'Eléctrica'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($order['plate']) ?> — Centro Automotriz Arley</title>
+    <title><?= htmlspecialchars($order['plate'] ?? 'Sin placa') ?> — Centro Automotriz Arley</title>
     <link rel="icon" type="image/png" href="app/assets/images/favicon.png">
     <link rel="stylesheet" href="app/assets/css/app.css">
 </head>
@@ -74,8 +80,18 @@ $categoryLabels = ['mechanic' => 'Mecánica', 'electric' => 'Eléctrica'];
     <div class="page-header">
         <div>
             <h1><?= htmlspecialchars($order['plate'] ?? 'Sin placa') ?> — <?= htmlspecialchars(trim(($order['vehicle_brand'] ?? '') . ' ' . ($order['vehicle_model'] ?? ''))) ?: 'Sin datos de vehículo' ?></h1>
-            <p>Dueño: <?= htmlspecialchars($order['customer_name']) ?> <?= $order['customer_phone'] ? '· ' . htmlspecialchars($order['customer_phone']) : '' ?>
+            <p>Dueño: <?= htmlspecialchars($order['customer_name']) ?>
+                <?= $order['customer_cedula'] ? '· Céd. ' . htmlspecialchars($order['customer_cedula']) : '' ?>
+                <?= $order['customer_phone'] ? '· ' . htmlspecialchars($order['customer_phone']) : '' ?>
                 <?php if ($order['vin']): ?> · VIN: <?= htmlspecialchars($order['vin']) ?><?php endif; ?>
+            </p>
+            <p style="color: #94a3b8; font-size: 12px;">
+                <?= implode(' · ', array_filter([
+                    $order['color'] ? 'Color: ' . htmlspecialchars($order['color']) : null,
+                    $order['engine'] ? 'Motor: ' . htmlspecialchars($order['engine']) : null,
+                    $order['mileage'] ? number_format($order['mileage']) . ' km' : null,
+                    $order['fuel_type'] ? htmlspecialchars($order['fuel_type']) : null,
+                ])) ?: 'Sin datos adicionales del vehículo' ?>
             </p>
             <?php if (!empty($order['dropoff_name'])): ?>
                 <p style="color: #fcd34d;">Entregó: <?= htmlspecialchars($order['dropoff_name']) ?> <?= $order['dropoff_phone'] ? '· ' . htmlspecialchars($order['dropoff_phone']) : '' ?></p>
@@ -121,6 +137,67 @@ $categoryLabels = ['mechanic' => 'Mecánica', 'electric' => 'Eléctrica'];
                         <button type="submit" class="btn btn-primary">Actualizar</button>
                     </form>
                 <?php endif; ?>
+            </div>
+
+            <!-- Inspección visual (fotos de ingreso) -->
+            <div class="section">
+                <h3>Inspección visual — fotos de ingreso</h3>
+                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 1rem;">Toca cada punto del diagrama para tomar o subir la foto de esa parte del vehículo.</p>
+
+                <div class="car-diagram-wrapper">
+                    <svg class="car-diagram" viewBox="0 0 300 520" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="70" y="40" width="160" height="440" rx="40" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.4)" stroke-width="2"/>
+                        <rect x="95" y="130" width="110" height="260" rx="16" fill="rgba(59,130,246,0.05)" stroke="rgba(59,130,246,0.25)" stroke-width="1.5"/>
+                        <circle cx="60" cy="110" r="16" fill="rgba(15,23,42,0.6)" stroke="rgba(59,130,246,0.3)"/>
+                        <circle cx="240" cy="110" r="16" fill="rgba(15,23,42,0.6)" stroke="rgba(59,130,246,0.3)"/>
+                        <circle cx="60" cy="410" r="16" fill="rgba(15,23,42,0.6)" stroke="rgba(59,130,246,0.3)"/>
+                        <circle cx="240" cy="410" r="16" fill="rgba(15,23,42,0.6)" stroke="rgba(59,130,246,0.3)"/>
+
+                        <?php foreach ([
+                            'front'    => [150, 55],
+                            'back'     => [150, 465],
+                            'left'     => [55, 260],
+                            'right'    => [245, 260],
+                            'roof'     => [150, 180],
+                            'interior' => [150, 340],
+                            'wheel_fl' => [60, 110],
+                            'wheel_fr' => [240, 110],
+                            'wheel_rl' => [60, 410],
+                            'wheel_rr' => [240, 410],
+                        ] as $angle => [$cx, $cy]): ?>
+                            <g class="photo-point" data-angle="<?= $angle ?>" data-has-photo="<?= isset($photosByAngle[$angle]) ? '1' : '0' ?>">
+                                <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="14" class="photo-point-circle"/>
+                                <text x="<?= $cx ?>" y="<?= $cy + 4 ?>" class="photo-point-icon" text-anchor="middle"><?= isset($photosByAngle[$angle]) ? '✓' : '+' ?></text>
+                            </g>
+                        <?php endforeach; ?>
+                    </svg>
+
+                    <div class="car-diagram-legend">
+                        <?php foreach (ORDER_PHOTO_ANGLES as $angle => $label): ?>
+                            <?php if ($angle === 'extra') continue; ?>
+                            <div class="legend-item" data-angle="<?= $angle ?>">
+                                <span class="legend-dot <?= isset($photosByAngle[$angle]) ? 'filled' : '' ?>"></span>
+                                <?= htmlspecialchars($label) ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <input type="file" id="photo_file_input" accept="image/*" capture="environment" style="display:none;">
+
+                <div class="photo-thumbnails" id="photo_thumbnails">
+                    <?php foreach ($photos as $p): ?>
+                        <div class="photo-thumb" data-photo-id="<?= (int) $p['id'] ?>">
+                            <img src="serve_photo.php?order_id=<?= $orderId ?>&id=<?= (int) $p['id'] ?>" alt="<?= htmlspecialchars(ORDER_PHOTO_ANGLES[$p['angle']] ?? $p['angle']) ?>">
+                            <span class="photo-thumb-label"><?= htmlspecialchars(ORDER_PHOTO_ANGLES[$p['angle']] ?? $p['angle']) ?></span>
+                            <?php if (can(PERM_ORDERS_CREATE) || can(PERM_ORDERS_WORK)): ?>
+                                <button type="button" class="photo-thumb-delete" data-photo-id="<?= (int) $p['id'] ?>">×</button>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <button type="button" class="btn btn-secondary" id="add_extra_photo_btn" style="margin-top: 1rem;">+ Agregar foto adicional</button>
             </div>
 
             <!-- DVI -->
@@ -186,6 +263,13 @@ $categoryLabels = ['mechanic' => 'Mecánica', 'electric' => 'Eléctrica'];
                 <?php endif; ?>
             </div>
 
+            <?php if ($order['requested_repairs']): ?>
+                <div class="section">
+                    <h3>Reparaciones solicitadas</h3>
+                    <p style="color: #cbd5e1; font-size: 13px;"><?= nl2br(htmlspecialchars($order['requested_repairs'])) ?></p>
+                </div>
+            <?php endif; ?>
+
             <?php if ($order['notes']): ?>
                 <div class="section">
                     <h3>Notas de recepción</h3>
@@ -232,6 +316,12 @@ $categoryLabels = ['mechanic' => 'Mecánica', 'electric' => 'Eléctrica'];
         </div>
     </div>
 </div>
+
+<script>
+    const ORDER_DETAIL_CSRF = <?= json_encode($csrf) ?>;
+    const ORDER_DETAIL_ID = <?= (int) $orderId ?>;
+</script>
+<script src="app/assets/js/order_detail.js"></script>
 
 </body>
 </html>

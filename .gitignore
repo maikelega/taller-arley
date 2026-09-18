@@ -5,6 +5,11 @@ app/uploads/*
 !app/uploads/.gitkeep
 downloads/*
 !downloads/.gitkeep
+
+# Archivos sueltos/temporales del usuario — no son parte del proyecto
+# (mismo patrón que en otros repos: ArchivosTemporales/ es zona de paso,
+# nunca se versiona)
+ArchivosTemporales/
 node_modules/
 *.log
 .DS_Store

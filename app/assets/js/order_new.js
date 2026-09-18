@@ -85,17 +85,37 @@ function setupAutocomplete({ inputId, dropdownId, endpoint, renderItem, onSelect
     });
 }
 
+// Llena los campos de vehículo (y opcionalmente placa/vin) desde un
+// objeto vehículo — reutilizado por el autocomplete de placa y por el
+// selector de "vehículos de este cliente".
+function fillVehicleFields(v, { setPlateVin = true } = {}) {
+    document.getElementById('vehicle_id').value = v.id || '';
+    if (setPlateVin) {
+        document.getElementById('plate').value = v.plate || '';
+        document.getElementById('vin').value = v.vin || '';
+    }
+    document.getElementById('vehicle_brand').value = v.brand || '';
+    document.getElementById('vehicle_model').value = v.model || '';
+    document.getElementById('vehicle_year').value = v.year || '';
+    document.getElementById('color').value = v.color || '';
+    document.getElementById('engine').value = v.engine || '';
+    document.getElementById('mileage').value = v.mileage || '';
+    if (v.fuel_type) document.getElementById('fuel_type').value = v.fuel_type;
+}
+
 // ── Cliente ───────────────────────────────────────────────
 setupAutocomplete({
     inputId: 'customer_name',
     dropdownId: 'customer_dropdown',
     endpoint: 'app/ajax/search_customers.php',
-    renderItem: (c) => `<strong>${escapeHtml(c.name)}</strong><span>${escapeHtml(c.phone) || 'Sin teléfono'}</span>`,
+    renderItem: (c) => `<strong>${escapeHtml(c.name)}</strong><span>${escapeHtml(c.cedula) ? escapeHtml(c.cedula) + ' · ' : ''}${escapeHtml(c.phone) || 'Sin teléfono'}</span>`,
     onSelect: (c) => {
         document.getElementById('customer_id').value = c.id;
         document.getElementById('customer_name').value = c.name;
+        document.getElementById('customer_cedula').value = c.cedula || '';
         document.getElementById('customer_phone').value = c.phone || '';
         document.getElementById('customer_email').value = c.email || '';
+        loadCustomerVehicles(c.id);
     },
 });
 
@@ -103,20 +123,64 @@ setupAutocomplete({
 // (evita asociar la orden al cliente equivocado si cambia el texto)
 document.getElementById('customer_name').addEventListener('input', () => {
     document.getElementById('customer_id').value = '';
+    document.getElementById('customer_vehicles_wrapper').style.display = 'none';
 });
 
-// ── Vehículo (por placa) ─────────────────────────────────
+// ── Vehículos ya asociados al cliente elegido ────────────
+async function loadCustomerVehicles(customerId) {
+    const wrapper = document.getElementById('customer_vehicles_wrapper');
+    const list = document.getElementById('customer_vehicles_list');
+
+    if (!customerId) {
+        wrapper.style.display = 'none';
+        return;
+    }
+
+    try {
+        const res = await fetch(`app/ajax/get_customer_vehicles.php?customer_id=${encodeURIComponent(customerId)}`);
+        const vehicles = await res.json();
+
+        if (!vehicles.length) {
+            wrapper.style.display = 'none';
+            return;
+        }
+
+        list.innerHTML = vehicles.map((v) => `
+            <div class="vehicle-choice" data-id="${v.id}">
+                <strong>${escapeHtml(v.plate || v.vin || 'Sin identificar')}</strong>
+                <span>${escapeHtml([v.brand, v.model, v.year].filter(Boolean).join(' ')) || 'Sin datos'}</span>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.vehicle-choice').forEach((el) => {
+            el.addEventListener('click', () => {
+                const id = parseInt(el.dataset.id, 10);
+                const v = vehicles.find((x) => x.id === id);
+                if (!v) return;
+
+                list.querySelectorAll('.vehicle-choice').forEach((e2) => e2.classList.remove('selected'));
+                el.classList.add('selected');
+
+                fillVehicleFields(v);
+                document.getElementById('vehicle_found_hint').style.display = 'block';
+            });
+        });
+
+        wrapper.style.display = 'block';
+    } catch (e) {
+        wrapper.style.display = 'none';
+    }
+}
+
+// ── Vehículo (por placa, cuando el cliente aún no está elegido o se
+// quiere buscar un vehículo de otro cliente) ─────────────
 setupAutocomplete({
     inputId: 'plate',
     dropdownId: 'plate_dropdown',
     endpoint: 'app/ajax/search_vehicle.php',
     renderItem: (v) => `<strong>${escapeHtml(v.plate)}</strong><span>${escapeHtml([v.brand, v.model, v.year].filter(Boolean).join(' ')) || 'Sin datos'} — ${escapeHtml(v.customer_name)}</span>`,
     onSelect: (v) => {
-        document.getElementById('plate').value = v.plate;
-        document.getElementById('vin').value = v.vin || '';
-        document.getElementById('vehicle_brand').value = v.brand || '';
-        document.getElementById('vehicle_model').value = v.model || '';
-        document.getElementById('vehicle_year').value = v.year || '';
+        fillVehicleFields(v);
 
         // Autocompleta también el dueño del vehículo encontrado
         document.getElementById('customer_id').value = v.customer_id;
@@ -128,9 +192,32 @@ setupAutocomplete({
     },
 });
 
+// Si se edita placa o VIN a mano después de elegir un vehículo de la
+// lista, invalida vehicle_id (el backend tratará esto como datos de
+// un vehículo distinto/nuevo en vez de reusar el elegido).
+['plate', 'vin'].forEach((id) => {
+    document.getElementById(id).addEventListener('input', () => {
+        document.getElementById('vehicle_id').value = '';
+    });
+});
+
 // ── Contacto de entrega (si no es el dueño) ──────────────
 document.getElementById('is_owner_checkbox').addEventListener('change', (e) => {
     document.getElementById('dropoff_fields').classList.toggle('open', !e.target.checked);
+});
+
+// ── Validación: placa o VIN (al menos uno) antes de enviar ──
+document.getElementById('order-form').addEventListener('submit', (e) => {
+    const plate = document.getElementById('plate').value.trim();
+    const vin = document.getElementById('vin').value.trim();
+    const hint = document.getElementById('plate_vin_hint');
+
+    if (plate === '' && vin === '') {
+        e.preventDefault();
+        hint.textContent = 'Ingresa al menos la placa o el VIN — no pueden estar ambos vacíos.';
+        hint.style.color = '#fca5a5';
+        document.getElementById('plate').focus();
+    }
 });
 
 // ── Decodificar VIN (manual, botón) ──────────────────────
@@ -168,6 +255,13 @@ document.getElementById('decode_vin_btn').addEventListener('click', async () => 
         if (data.brand) document.getElementById('vehicle_brand').value = data.brand;
         if (data.model) document.getElementById('vehicle_model').value = data.model;
         if (data.year) document.getElementById('vehicle_year').value = data.year;
+        if (data.engine) document.getElementById('engine').value = data.engine;
+        if (data.fuel_type) {
+            const fuelSelect = document.getElementById('fuel_type');
+            if ([...fuelSelect.options].some((o) => o.value === data.fuel_type)) {
+                fuelSelect.value = data.fuel_type;
+            }
+        }
 
         status.textContent = '✓ Vehículo decodificado correctamente.';
         status.style.color = '#6ee7b7';
