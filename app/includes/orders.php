@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/vehicles.php';
+require_once __DIR__ . '/photos.php';
 
 /**
  * Devuelve todas las OT activas (no cerradas) agrupadas por status_id,
@@ -183,6 +184,13 @@ function create_order(array $data): array
         $orderId = (int) $pdo->lastInsertId();
 
         $pdo->commit();
+
+        // Fotos tomadas en la misma pantalla de recepción (antes de que la
+        // orden existiera) — se mueven del área temporal a la orden real.
+        $tempToken = trim($data['temp_token'] ?? '');
+        if ($tempToken !== '') {
+            attach_temp_photos_to_order($tempToken, $orderId);
+        }
 
         return ['ok' => true, 'order_id' => $orderId];
     } catch (PDOException $e) {

@@ -432,3 +432,122 @@ async function captureAndReadText() {
         console.error('[Tesseract OCR]', e);
     }
 }
+
+// ══════════════════════════════════════════════════════════
+// Inspección visual — fotos de ingreso (subidas a un área temporal
+// hasta que se cree la orden; ver attach_temp_photos_to_order en
+// includes/photos.php)
+// ══════════════════════════════════════════════════════════
+
+const ANGLE_LABELS = {
+    front: 'Frente', back: 'Atrás', left: 'Lateral izquierdo', right: 'Lateral derecho',
+    roof: 'Techo / capó', interior: 'Interior / tablero',
+    wheel_fl: 'Llanta del. izquierda', wheel_fr: 'Llanta del. derecha',
+    wheel_rl: 'Llanta tras. izquierda', wheel_rr: 'Llanta tras. derecha',
+    extra: 'Foto adicional',
+};
+
+const photoFileInput = document.getElementById('photo_file_input');
+let pendingPhotoAngle = null;
+
+document.querySelectorAll('.photo-point').forEach((el) => {
+    el.addEventListener('click', () => {
+        pendingPhotoAngle = el.dataset.angle;
+        photoFileInput.click();
+    });
+});
+
+document.getElementById('add_extra_photo_btn').addEventListener('click', () => {
+    pendingPhotoAngle = 'extra';
+    photoFileInput.click();
+});
+
+photoFileInput.addEventListener('change', async () => {
+    const file = photoFileInput.files[0];
+    photoFileInput.value = '';
+    if (!file || !pendingPhotoAngle) return;
+
+    const angle = pendingPhotoAngle;
+    pendingPhotoAngle = null;
+
+    const formData = new FormData();
+    formData.append('csrf_token', ORDER_NEW_CSRF);
+    formData.append('temp_token', ORDER_NEW_TEMP_TOKEN);
+    formData.append('angle', angle);
+    formData.append('photo', file);
+
+    try {
+        const res = await fetch('app/ajax/upload_temp_photo.php', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!data.ok) {
+            alert(data.error || 'No se pudo subir la foto.');
+            return;
+        }
+
+        const point = document.querySelector(`.photo-point[data-angle="${angle}"]`);
+        if (point) {
+            point.dataset.hasPhoto = '1';
+            point.querySelector('.photo-point-icon').textContent = '✓';
+            const legendDot = document.querySelector(`.legend-item[data-angle="${angle}"] .legend-dot`);
+            if (legendDot) legendDot.classList.add('filled');
+        }
+
+        addPhotoThumbnail(data.filename, data.url, angle);
+    } catch (e) {
+        alert('Error de conexión al subir la foto.');
+    }
+});
+
+function addPhotoThumbnail(filename, url, angle) {
+    const container = document.getElementById('photo_thumbnails');
+
+    if (angle !== 'extra') {
+        container.querySelectorAll('.photo-thumb').forEach((el) => {
+            if (el.dataset.angle === angle) el.remove();
+        });
+    }
+
+    const label = ANGLE_LABELS[angle] || angle;
+    const div = document.createElement('div');
+    div.className = 'photo-thumb';
+    div.dataset.filename = filename;
+    div.dataset.angle = angle;
+    div.innerHTML = `
+        <img src="${escapeHtml(url)}" alt="${escapeHtml(label)}">
+        <span class="photo-thumb-label">${escapeHtml(label)}</span>
+        <button type="button" class="photo-thumb-delete">×</button>
+    `;
+    div.querySelector('.photo-thumb-delete').addEventListener('click', () => deleteTempPhoto(filename, angle, div));
+    container.appendChild(div);
+}
+
+async function deleteTempPhoto(filename, angle, thumbEl) {
+    if (!confirm('¿Eliminar esta foto?')) return;
+
+    try {
+        const res = await fetch('app/ajax/delete_temp_photo.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ csrf_token: ORDER_NEW_CSRF, temp_token: ORDER_NEW_TEMP_TOKEN, filename }),
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+            alert(data.error || 'No se pudo eliminar la foto.');
+            return;
+        }
+
+        thumbEl.remove();
+
+        const point = document.querySelector(`.photo-point[data-angle="${angle}"]`);
+        if (point) {
+            point.dataset.hasPhoto = '0';
+            point.querySelector('.photo-point-icon').textContent = '+';
+            const legendDot = document.querySelector(`.legend-item[data-angle="${angle}"] .legend-dot`);
+            if (legendDot) legendDot.classList.remove('filled');
+        }
+    } catch (e) {
+        alert('Error de conexión al eliminar la foto.');
+    }
+}

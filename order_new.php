@@ -2,11 +2,20 @@
 require_once __DIR__ . '/app/includes/auth.php';
 require_once __DIR__ . '/app/includes/permissions.php';
 require_once __DIR__ . '/app/includes/orders.php';
+require_once __DIR__ . '/app/includes/photos.php';
 require_login();
 require_permission(PERM_ORDERS_CREATE);
 
 $user = current_user();
 $error = '';
+
+// Token de fotos temporales — se reusa si el form se re-muestra por un
+// error de validación (para no perder las fotos ya subidas), o se genera
+// uno nuevo al cargar la página por primera vez.
+$tempToken = $_POST['temp_token'] ?? '';
+if (!is_valid_temp_token($tempToken)) {
+    $tempToken = bin2hex(random_bytes(16));
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify($_POST['csrf_token'] ?? '')) {
@@ -52,6 +61,7 @@ $csrf = csrf_token();
     <div class="form-card">
         <form method="POST" action="order_new.php" novalidate id="order-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
+            <input type="hidden" name="temp_token" value="<?= htmlspecialchars($tempToken) ?>">
             <input type="hidden" name="customer_id" id="customer_id" value="">
             <input type="hidden" name="vehicle_id" id="vehicle_id" value="">
 
@@ -170,6 +180,56 @@ $csrf = csrf_token();
                 </select>
             </div>
 
+            <div class="section" style="padding: 0; background: none; border: none; margin: 1.5rem 0;">
+                <h3 style="margin-bottom: 0.5rem;">Inspección visual — fotos de ingreso</h3>
+                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 1rem;">Toca cada punto del diagrama para tomar o subir la foto de esa parte del vehículo.</p>
+
+                <div class="car-diagram-wrapper">
+                    <svg class="car-diagram" viewBox="0 0 300 520" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="70" y="40" width="160" height="440" rx="40" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.4)" stroke-width="2"/>
+                        <rect x="95" y="130" width="110" height="260" rx="16" fill="rgba(59,130,246,0.05)" stroke="rgba(59,130,246,0.25)" stroke-width="1.5"/>
+                        <circle cx="60" cy="110" r="16" fill="rgba(15,23,42,0.6)" stroke="rgba(59,130,246,0.3)"/>
+                        <circle cx="240" cy="110" r="16" fill="rgba(15,23,42,0.6)" stroke="rgba(59,130,246,0.3)"/>
+                        <circle cx="60" cy="410" r="16" fill="rgba(15,23,42,0.6)" stroke="rgba(59,130,246,0.3)"/>
+                        <circle cx="240" cy="410" r="16" fill="rgba(15,23,42,0.6)" stroke="rgba(59,130,246,0.3)"/>
+
+                        <?php foreach ([
+                            'front'    => [150, 55],
+                            'back'     => [150, 465],
+                            'left'     => [55, 260],
+                            'right'    => [245, 260],
+                            'roof'     => [150, 180],
+                            'interior' => [150, 340],
+                            'wheel_fl' => [60, 110],
+                            'wheel_fr' => [240, 110],
+                            'wheel_rl' => [60, 410],
+                            'wheel_rr' => [240, 410],
+                        ] as $angle => [$cx, $cy]): ?>
+                            <g class="photo-point" data-angle="<?= $angle ?>" data-has-photo="0">
+                                <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="14" class="photo-point-circle"/>
+                                <text x="<?= $cx ?>" y="<?= $cy + 4 ?>" class="photo-point-icon" text-anchor="middle">+</text>
+                            </g>
+                        <?php endforeach; ?>
+                    </svg>
+
+                    <div class="car-diagram-legend">
+                        <?php foreach (ORDER_PHOTO_ANGLES as $angle => $label): ?>
+                            <?php if ($angle === 'extra') continue; ?>
+                            <div class="legend-item" data-angle="<?= $angle ?>">
+                                <span class="legend-dot"></span>
+                                <?= htmlspecialchars($label) ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <input type="file" id="photo_file_input" accept="image/*" capture="environment" style="display:none;">
+
+                <div class="photo-thumbnails" id="photo_thumbnails"></div>
+
+                <button type="button" class="btn btn-secondary" id="add_extra_photo_btn" style="margin-top: 1rem;">+ Agregar foto adicional</button>
+            </div>
+
             <div class="form-group">
                 <label>Reparaciones solicitadas</label>
                 <textarea name="requested_repairs" class="form-control" placeholder="Qué pide el cliente que se revise o repare"><?= htmlspecialchars($_POST['requested_repairs'] ?? '') ?></textarea>
@@ -202,6 +262,10 @@ $csrf = csrf_token();
     </div>
 </div>
 
+<script>
+    const ORDER_NEW_CSRF = <?= json_encode($csrf) ?>;
+    const ORDER_NEW_TEMP_TOKEN = <?= json_encode($tempToken) ?>;
+</script>
 <script src="app/assets/js/order_new.js"></script>
 
 </body>
