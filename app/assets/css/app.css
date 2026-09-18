@@ -160,7 +160,20 @@ a:hover { text-decoration: underline; }
     font-weight: 700;
 }
 
+.kanban-col-cards {
+    min-height: 60px;
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+
+.kanban-col.drag-over .kanban-col-cards {
+    background: rgba(59, 130, 246, 0.1);
+    outline: 2px dashed rgba(59, 130, 246, 0.5);
+    outline-offset: 4px;
+}
+
 .order-card {
+    display: block;
     background: rgba(30, 58, 138, 0.2);
     border: 1px solid rgba(59, 130, 246, 0.3);
     border-radius: 10px;
@@ -168,6 +181,7 @@ a:hover { text-decoration: underline; }
     margin-bottom: 10px;
     cursor: pointer;
     transition: all 0.2s;
+    text-decoration: none;
 }
 
 .order-card:hover {
@@ -175,6 +189,9 @@ a:hover { text-decoration: underline; }
     border-color: rgba(59, 130, 246, 0.6);
     transform: translateY(-2px);
 }
+
+.order-card[draggable="true"] { cursor: grab; }
+.order-card.dragging { opacity: 0.4; cursor: grabbing; }
 
 .order-card-plate {
     font-weight: 700;

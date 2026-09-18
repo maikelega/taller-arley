@@ -43,37 +43,49 @@ $activeStatuses = array_filter($statuses, fn($s) => (int) $s['id'] !== 8);
         <?php endif; ?>
     </div>
 
+    <?php $canDrag = can(PERM_ORDERS_WORK); ?>
     <div class="kanban">
         <?php foreach ($activeStatuses as $status): ?>
             <?php $orders = $ordersByStatus[(int) $status['id']] ?? []; ?>
-            <div class="kanban-col">
+            <div class="kanban-col" data-status-id="<?= (int) $status['id'] ?>">
                 <div class="kanban-col-header">
                     <span class="kanban-col-title"><?= htmlspecialchars($status['name']) ?></span>
                     <span class="kanban-col-count"><?= count($orders) ?></span>
                 </div>
 
-                <?php if (empty($orders)): ?>
-                    <div class="empty-col">Sin órdenes</div>
-                <?php endif; ?>
+                <div class="kanban-col-cards">
+                    <?php if (empty($orders)): ?>
+                        <div class="empty-col">Sin órdenes</div>
+                    <?php endif; ?>
 
-                <?php foreach ($orders as $order): ?>
-                    <a href="order_detail.php?id=<?= (int) $order['id'] ?>" class="order-card" style="display: block;">
-                        <div class="order-card-plate"><?= htmlspecialchars($order['plate']) ?></div>
-                        <?php if ($order['vehicle_brand'] || $order['vehicle_model']): ?>
-                            <div class="order-card-vehicle">
-                                <?= htmlspecialchars(trim($order['vehicle_brand'] . ' ' . $order['vehicle_model'])) ?>
-                            </div>
-                        <?php endif; ?>
-                        <div class="order-card-customer"><?= htmlspecialchars($order['customer_name']) ?></div>
-                        <?php if ($order['mechanic_name']): ?>
-                            <div class="order-card-mechanic"><?= htmlspecialchars($order['mechanic_name']) ?></div>
-                        <?php endif; ?>
-                    </a>
-                <?php endforeach; ?>
+                    <?php foreach ($orders as $order): ?>
+                        <a href="order_detail.php?id=<?= (int) $order['id'] ?>" class="order-card"
+                           data-order-id="<?= (int) $order['id'] ?>"
+                           <?= $canDrag ? 'draggable="true"' : '' ?>>
+                            <div class="order-card-plate"><?= htmlspecialchars($order['plate'] ?? 'Sin placa') ?></div>
+                            <?php if ($order['vehicle_brand'] || $order['vehicle_model']): ?>
+                                <div class="order-card-vehicle">
+                                    <?= htmlspecialchars(trim($order['vehicle_brand'] . ' ' . $order['vehicle_model'])) ?>
+                                </div>
+                            <?php endif; ?>
+                            <div class="order-card-customer"><?= htmlspecialchars($order['customer_name']) ?></div>
+                            <?php if ($order['mechanic_name']): ?>
+                                <div class="order-card-mechanic"><?= htmlspecialchars($order['mechanic_name']) ?></div>
+                            <?php endif; ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
             </div>
         <?php endforeach; ?>
     </div>
 </div>
+
+<?php if ($canDrag): ?>
+<script>
+    const DASHBOARD_CSRF = <?= json_encode(csrf_token()) ?>;
+</script>
+<script src="app/assets/js/dashboard.js"></script>
+<?php endif; ?>
 
 </body>
 </html>
